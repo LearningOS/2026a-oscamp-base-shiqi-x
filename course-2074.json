@@ -2,8 +2,8 @@
   "schema": 1,
   "courseId": 2074,
   "repository": "LearningOS/2026a-oscamp-base-shiqi-x",
-  "commit": "e9e3d82efe406db14c4b48d4f868bf50c5228b3c",
-  "score": 60,
+  "commit": "f05f523037b47e42ac1aeb5838a99dd711c01311",
+  "score": 72,
   "totalScore": 100,
   "exercises": [
     {
@@ -107,16 +107,16 @@
     {
       "name": "stack_coroutine",
       "max": 6,
-      "score": 0,
-      "status": "fail",
-      "exitCode": 101
+      "score": 6,
+      "status": "pass",
+      "exitCode": 0
     },
     {
       "name": "green_threads",
       "max": 6,
-      "score": 0,
-      "status": "fail",
-      "exitCode": 101
+      "score": 6,
+      "status": "pass",
+      "exitCode": 0
     },
     {
       "name": "basic_future",
@@ -176,9 +176,9 @@
     }
   ],
   "student": "shiqi-x",
-  "runId": "41029594933",
+  "runId": "41089502178",
   "runAttempt": "1",
   "upload": {
-    "status": "accepted"
+    "status": "pending"
   }
 }
