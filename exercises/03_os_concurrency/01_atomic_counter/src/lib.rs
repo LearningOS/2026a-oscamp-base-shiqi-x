@@ -26,19 +26,24 @@ impl AtomicCounter {
     /// Hint: use `fetch_add` with `Ordering::Relaxed`
     pub fn increment(&self) -> u64 {
         // TODO
-        todo!()
+        // todo!()
+        let old = self.value.fetch_add(1, Ordering::Relaxed);
+        old
     }
 
     /// Atomically decrements by 1, returns the value **before** decrement.
     pub fn decrement(&self) -> u64 {
         // TODO
-        todo!()
+        // todo!()
+        let old = self.value.fetch_sub(1, Ordering::Relaxed);
+        old
     }
 
     /// Gets the current value.
     pub fn get(&self) -> u64 {
         // TODO
-        todo!()
+        // todo!()
+        self.value.load(Ordering::Acquire)
     }
 
     /// Atomic CAS (Compare-And-Swap) operation.
@@ -48,7 +53,13 @@ impl AtomicCounter {
     /// Hint: use `compare_exchange` with success ordering `Ordering::AcqRel` and failure ordering `Ordering::Acquire`
     pub fn compare_and_swap(&self, expected: u64, new_val: u64) -> Result<u64, u64> {
         // TODO
-        todo!()
+        // todo!()
+        self.value.compare_exchange(
+            expected,
+            new_val,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        )
     }
 
     /// Multiply the value atomically using a CAS loop.
@@ -62,7 +73,20 @@ impl AtomicCounter {
         //     let new = current * multiplier;
         //     match self.compare_and_swap(current, new) { ... }
         // }
-        todo!()
+        // todo!()
+        loop {
+            let current = self.value.load(Ordering::Acquire);
+            let new = current * multiplier;
+            match self.value.compare_exchange(
+                current,
+                new,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(old) => return old,
+                Err(_) => continue,
+            }
+        }
     }
 }
 
