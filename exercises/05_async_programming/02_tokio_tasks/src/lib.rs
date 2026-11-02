@@ -7,7 +7,6 @@
 //! - `JoinHandle` waits for task completion
 //! - Concurrent execution between asynchronous tasks
 
-use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 
 /// Concurrently compute the square of each number in 0..n, collect results and return in order.
@@ -17,7 +16,22 @@ pub async fn concurrent_squares(n: usize) -> Vec<usize> {
     // TODO: Create n asynchronous tasks, each computing i * i
     // TODO: Collect all JoinHandle
     // TODO: Await each one to get result
-    todo!()
+    // todo!()
+    let mut handles = vec![];
+
+    for i in 0..n {
+        let handle = tokio::spawn(async move {
+            i * i
+        });
+        handles.push(handle);
+    }
+
+    let mut result: Vec<usize> = vec![];
+    for handle in handles {
+        let val = handle.await.unwrap();
+        result.push(val);
+    }
+    result
 }
 
 /// Concurrently execute multiple "time-consuming" tasks (simulated with sleep), return all results.
@@ -28,7 +42,23 @@ pub async fn parallel_sleep_tasks(n: usize, duration_ms: u64) -> Vec<usize> {
     // TODO: Create asynchronous task for each id in 0..n
     // TODO: Each task sleeps specified duration and returns its own id
     // TODO: Collect all results and sort
-    todo!()
+    // todo!()
+    let mut handles = vec![];
+
+    for id in 0..n {
+        let handle = tokio::spawn(async move {
+            sleep(Duration::from_millis(duration_ms)).await;
+            id
+        });
+        handles.push(handle);
+    }
+
+    let mut ids: Vec<usize> = vec![];
+    for handle in handles {
+        let id = handle.await.unwrap();
+        ids.push(id); 
+    }
+    ids
 }
 
 #[cfg(test)]
