@@ -77,7 +77,7 @@ pub enum TranslateResult {
 
 impl Sv39PageTable {
     pub fn new() -> Self {
-        let mut pt = Self {
+        let mut pt: Sv39PageTable = Self {
             nodes: HashMap::new(),
             root_ppn: 0x80000,
             next_ppn: 0x80001,
@@ -103,7 +103,8 @@ impl Sv39PageTable {
     /// 提示：右移 (12 + level * 9) 位，然后与 0x1FF 做掩码。
     pub fn extract_vpn(va: u64, level: usize) -> usize {
         // TODO: 从虚拟地址中提取指定级别的 VPN 索引
-        todo!()
+        // todo!()
+        (va as usize >> (12 + level * 9)) & 0x1FF
     }
 
     /// 建立从虚拟页到物理页的映射（4KB 页）。
@@ -119,7 +120,26 @@ impl Sv39PageTable {
         // 对于中间层级（level 2 和 level 1），如果对应 VPN 的页表项（PTE）无效（PTE_V == 0），
         // 则需要分配一个新的页表节点（使用 alloc_node），并将新节点的 PPN 写入当前 PTE（仅设置 PTE_V 标志）。
         // 最后在 level 0 的 PTE 中写入目标物理页号（pa >> 12）和 flags。
-        todo!()
+        // todo!()
+        let va = va & !(PAGE_SIZE as u64 - 1);
+        let pa = pa & !(PAGE_SIZE as u64 - 1);
+        let mut current_ppn = self.root_ppn;
+
+        for level in [2, 1] {
+            let vpn = Self::extract_vpn(va, level);
+            let pt_node = self.nodes.get(&current_ppn).unwrap();
+            let mut pte = pt_node.entries[vpn];
+            if (pte & PTE_V) == 0 {
+                let new_ppn = self.alloc_node();
+                let pt_node = self.nodes.get_mut(&current_ppn).unwrap();
+                pt_node.entries[vpn] = (new_ppn << PPN_SHIFT) | PTE_V;
+                pte = pt_node.entries[vpn];
+            }
+            current_ppn = pte >> PPN_SHIFT;
+        }
+        let vpn0 = Self::extract_vpn(va, 0);
+        let pt_node = self.nodes.get_mut(&current_ppn).unwrap();
+        pt_node.entries[vpn0] = ((pa >> 12) << PPN_SHIFT) | flags;
     }
 
     /// 遍历三级页表，将虚拟地址翻译为物理地址。
@@ -141,7 +161,34 @@ impl Sv39PageTable {
         // 如果 PTE 是叶节点（即 R、W、X 标志位中有至少一个被置位），则可以直接使用该 PTE 中的物理页号（PPN）计算最终的物理地址。
         // 否则，该 PTE 指向下一级页表节点，继续遍历下一级。
         // 遍历到 level 0 时，PTE 必须是叶节点。
-        todo!()
+        // todo!()
+        let offset_12 = va & (PAGE_SIZE as u64 - 1);
+        let mut current_ppn = self.root_ppn;
+
+        for level in [2, 1] {
+            let vpn = Self::extract_vpn(va, level);
+            let pt_node = self.nodes.get(&current_ppn).unwrap();
+            let pte = pt_node.entries[vpn];
+            if (pte & PTE_V) == 0 {
+                return TranslateResult::PageFault;
+            }
+            if (pte & (PTE_R | PTE_W | PTE_X)) != 0 {
+                let offset_bit = 12 + level * 9;
+                let offset = va & ((1 << offset_bit) - 1);
+                let ppn = ((pte >> PPN_SHIFT) << offset_bit) | offset;
+                return TranslateResult::Ok(ppn);
+            }
+            current_ppn = pte >> PPN_SHIFT;
+        }
+
+        let vpn_0 = Self::extract_vpn(va, 0);
+        let pt_node = self.nodes.get(&current_ppn).unwrap();
+        let pte = pt_node.entries[vpn_0];
+        if (pte & PTE_V) == 0 {
+            return TranslateResult::PageFault;
+        }
+        let ppn = ((pte >> PPN_SHIFT) << 12) | offset_12;
+        TranslateResult::Ok(ppn)
     }
 
     /// 建立大页映射（2MB superpage，在 level 1 设叶子 PTE）。
@@ -160,7 +207,23 @@ impl Sv39PageTable {
         // 你需要在 level 2 找到或创建中间页表节点，然后在 level 1 写入叶子 PTE。
         // 注意大页的物理页号计算方式与普通页相同（pa >> 12），
         // 但翻译时 offset 包含虚拟地址的低 21 位（VPN[0] 部分 + 12 位页内偏移）。
-        todo!()
+        // todo!()
+        let mut current_ppn = self.root_ppn;
+
+        let vpn_2 = Self::extract_vpn(va, 2);
+        let pt_node_2 = self.nodes.get(&current_ppn).unwrap();
+        let mut pte = pt_node_2.entries[vpn_2];
+        if (pte & PTE_V) == 0 {
+            let new_ppn = self.alloc_node();
+            let pt_node_2 = self.nodes.get_mut(&current_ppn).unwrap();
+            pt_node_2.entries[vpn_2] = (new_ppn << PPN_SHIFT) | PTE_V;
+            pte = pt_node_2.entries[vpn_2];
+        }
+        current_ppn = pte >> PPN_SHIFT;
+
+        let vpn_1 = Self::extract_vpn(va, 1);
+        let pt_node_1 = self.nodes.get_mut(&current_ppn).unwrap();
+        pt_node_1.entries[vpn_1] = ((pa >> 21) << PPN_SHIFT) | flags;
     }
 }
 
